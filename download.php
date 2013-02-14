@@ -7,13 +7,13 @@ if(isset($_GET['url']) && isset($_GET['start'])){
 
 class joomla {
 
-	//Messages and errors is pushed to this array
+    //Messages and errors is pushed to this array
     public static $msg = array();
     
     /*
-	* Start function
-	* Checking if tmp dir exists else create
-	* Get the variables for Joomla package etc.
+    * Start function
+    * Checking if tmp dir exists else create
+    * Get the variables for Joomla package etc.
     */
 
     public function start(){
@@ -42,10 +42,10 @@ class joomla {
     }
 
     /**
-	* Version function
-	* Find joomla versions depending on the official xml files
-	* We are getting the packages from github, because Joomla do not include the url for the full package download
-	* @return rows for table
+    * Version function
+    * Find joomla versions depending on the official xml files
+    * We are getting the packages from github, because Joomla do not include the url for the full package download
+    * @return rows for table
     */
 
     public function version(){
@@ -77,7 +77,7 @@ class joomla {
     }
 
     /** 
-	* Downloading Joomla and place it in the tmp folder
+    * Downloading Joomla and place it in the tmp folder
     */
     public function download($url, $name){
         
@@ -95,12 +95,11 @@ class joomla {
         } else {
             array_push(self::$msg, array("msg" => "Download to ".$name,"type"=>"msg"));
         }
-
         return true;  
     }
 
     /**
-	* Unzip Joomla in the tmp folder
+    * Unzip Joomla in the tmp folder
     */
 
     public function unzip($file, $to){
@@ -116,8 +115,61 @@ class joomla {
     }
 
     /**
-	* Delete tmp folder
-	*/
+    * Move Joomal to the same dir as this file
+    * If the host not support shell_exec - they need to move the files them self and CHANGE host!!
+    */
+
+    public function move($folder, $moveTo){
+        $dirs = array_filter(glob($folder.'*'), 'is_dir');
+        //print_r($dirs);
+        $dir = reset($dirs);
+        
+        if(!file_exists($moveTo)): 
+            mkdir($moveTo);
+        endif;
+        if(function_exists("shell_exec")):
+            $move = shell_exec("cp -r ".escapeshellcmd($dir)."/* ".escapeshellcmd($moveTo));
+            array_push(self::$msg, array("msg" => "Moving files: ".$move.$dir,"type"=>"msg"));
+        else:
+            array_push(self::$msg, array("msg" => "Please move Joomla to the right position from ".$folder,"type"=>"msg"));
+        endif;
+    }
+
+    public function connection($url){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL,$url);
+        // don't download content
+        curl_setopt($ch, CURLOPT_NOBODY, true);
+        curl_setopt($ch, CURLOPT_FAILONERROR, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE); 
+        print_r($httpcode);
+        return ($httpcode < 400) ? true : false;
+    }
+
+    /**
+    * Return the errors from the msg->array()
+    */
+    public function error(){
+        $html = false;
+        //print_r(joomla::$msg);
+        if(count(joomla::$msg) > 0) :
+            foreach (joomla::$msg as $message){
+                if($message["type"] == "msg") :
+                    $html .= '<a class="btn btn-mini btn-success" href="#"><i class="icon-ok"></i></a> '.$message['msg']."<br />";
+                else :
+                    $html .= '<a class="btn btn-mini btn-danger" href="#"><i class="icon-remove"></i></a> '.$message['msg']."<br />";
+                endif;
+            }
+        endif;
+        return $html;
+    }
+    
+    /**
+    * Removes tmp folder
+    */
     public function clean($tmp){
         if(function_exists("system")):
             system('/bin/rm -rf ' . escapeshellarg($tmp));
@@ -128,7 +180,7 @@ class joomla {
     }
 
     /**
-    * Removes this file for security reason
+    * Removes this file for security reason!!
     */
     public function leave(){
         if(unlink(__FILE__)):
